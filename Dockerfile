@@ -2,7 +2,7 @@
 # from: https://github.com/pridkett/purpleair2mqtt/issues/2
 #
 
-FROM golang:1.21
+FROM golang:1.24
 
 WORKDIR /usr/src/app
 
