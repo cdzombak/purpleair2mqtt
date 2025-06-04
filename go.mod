@@ -1,6 +1,6 @@
-module github.com/pridkett/purpleair2mqtt
+module github.com/cdzombak/purpleair2mqtt
 
-go 1.18
+go 1.24
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.4.1 // indirect
