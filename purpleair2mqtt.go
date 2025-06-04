@@ -247,7 +247,9 @@ func main() {
 	for {
 		pastatus := new(purpleAirStatus)
 		// see: https://stackoverflow.com/a/31129967/57626
-		getJson(config.PurpleAir.Url, pastatus, myClient)
+		if err := getJson(config.PurpleAir.Url, pastatus, myClient); err != nil {
+			panic(err)
+		}
 		normalizePaStatus(pastatus)
 
 		// if we don't set the specific topic, then we can grab and set the topic from the Geo field
@@ -353,7 +355,7 @@ func status_to_point(status *purpleAirStatus) (*influxclient.Point, error) {
 	values["dewpoint"] = status.Dewpoint
 	values["rssi"] = status.RSSI
 
-	return influxclient.NewPoint("system", tags, values, time.Now())
+	return influxclient.NewPoint("purpleair_status", tags, values, time.Now())
 }
 
 func monitor_to_point(monitor *purpleAirMonitor) (*influxclient.Point, error) {
@@ -382,7 +384,7 @@ func monitor_to_point(monitor *purpleAirMonitor) (*influxclient.Point, error) {
 	values["key2_count"] = monitor.Key2Count
 	values["ts_s_latency"] = monitor.TsSLatency
 
-	return influxclient.NewPoint("purpleair", tags, values, time.Now())
+	return influxclient.NewPoint("purpleair_monitor", tags, values, time.Now())
 }
 
 func write_influx(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB *purpleAirMonitor) {
