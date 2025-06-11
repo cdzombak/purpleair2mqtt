@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/naoina/toml"
 	"github.com/withmandala/go-log"
@@ -343,13 +344,22 @@ func normalizePaStatus(pastatus *purpleAirStatus) *purpleAirStatus {
 }
 
 func getJson(url string, target interface{}, myClient *http.Client) error {
-	r, err := myClient.Get(url)
-	if err != nil {
-		return err
-	}
-	defer r.Body.Close()
-
-	return json.NewDecoder(r.Body).Decode(target)
+	return retry.Do(
+		func() error {
+			r, err := myClient.Get(url)
+			if err != nil {
+				return err
+			}
+			defer r.Body.Close()
+			return json.NewDecoder(r.Body).Decode(target)
+		},
+		retry.Attempts(5),
+		retry.Delay(1*time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.OnRetry(func(n uint, err error) {
+			logger.Warnf("Retry attempt %d failed: %v", n+1, err)
+		}),
+	)
 }
 
 func status_to_point(status *purpleAirStatus) (*influxclient.Point, error) {

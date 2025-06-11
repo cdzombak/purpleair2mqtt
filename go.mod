@@ -3,6 +3,7 @@ module github.com/cdzombak/purpleair2mqtt
 go 1.24
 
 require (
+	github.com/avast/retry-go/v4 v4.6.1 // indirect
 	github.com/eclipse/paho.mqtt.golang v1.4.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c // indirect
