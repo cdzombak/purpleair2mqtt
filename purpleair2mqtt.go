@@ -38,16 +38,19 @@ type tomlConfigHass struct {
 }
 
 type tomlConfigInflux struct {
-	Hostname string
-	Port     int
-	Database string
-	Username string
-	Password string
+	Hostname              string
+	Port                  int
+	Database              string
+	Username              string
+	Password              string
+	MeasurementName       string // Name of the measurement in InfluxDB for monitor data
+	StatusMeasurementName string // Name of the measurement in InfluxDB for status data
 }
 
 type tomlConfigPurpleAir struct {
 	Url      string
 	PollRate int
+	Timeout  int // Timeout in seconds for HTTP requests
 }
 
 type tomlConfig struct {
@@ -242,7 +245,11 @@ func main() {
 	}
 
 	logger.Infof("HTTP Target: %s", config.PurpleAir.Url)
-	var myClient = &http.Client{Timeout: 10 * time.Second}
+	timeout := 15
+	if config.PurpleAir.Timeout > 0 {
+		timeout = config.PurpleAir.Timeout
+	}
+	var myClient = &http.Client{Timeout: time.Duration(timeout) * time.Second}
 
 	for {
 		pastatus := new(purpleAirStatus)
@@ -355,7 +362,12 @@ func status_to_point(status *purpleAirStatus) (*influxclient.Point, error) {
 	values["dewpoint"] = status.Dewpoint
 	values["rssi"] = status.RSSI
 
-	return influxclient.NewPoint("purpleair_status", tags, values, time.Now())
+	measurementName := "purpleair_status"
+	if config.Influx.StatusMeasurementName != "" {
+		measurementName = config.Influx.StatusMeasurementName
+	}
+
+	return influxclient.NewPoint(measurementName, tags, values, time.Now())
 }
 
 func monitor_to_point(monitor *purpleAirMonitor) (*influxclient.Point, error) {
@@ -384,7 +396,12 @@ func monitor_to_point(monitor *purpleAirMonitor) (*influxclient.Point, error) {
 	values["key2_count"] = monitor.Key2Count
 	values["ts_s_latency"] = monitor.TsSLatency
 
-	return influxclient.NewPoint("purpleair_monitor", tags, values, time.Now())
+	measurementName := "purpleair_monitor"
+	if config.Influx.MeasurementName != "" {
+		measurementName = config.Influx.MeasurementName
+	}
+
+	return influxclient.NewPoint(measurementName, tags, values, time.Now())
 }
 
 func write_influx(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB *purpleAirMonitor) {
