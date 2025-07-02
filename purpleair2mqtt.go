@@ -87,6 +87,13 @@ type purpleAirMonitor struct {
 	Key2ResponseDate int     `json:"key2_response_date"`
 	Key2Count        int     `json:"key2_count"`
 	TsSLatency       int     `json:"ts_s_latency"`
+	
+	// US EPA AQI fields
+	EPAAQI           int     // US EPA AQI value (highest of PM2.5 and PM10)
+	EPAPM25AQI       int     // US EPA PM2.5 AQI
+	EPAPM10AQI       int     // US EPA PM10 AQI
+	EPAAQICategory   string  // US EPA AQI category
+	EPAAQIColor      string  // US EPA AQI color
 }
 
 type purpleAirStatus struct {
@@ -180,6 +187,13 @@ type purpleAirStatus struct {
 	Status8       int    `json:"status_8"`
 	Status9       int    `json:"status_9"`
 	SSID          string `json:"ssid"`
+	
+	// US EPA AQI fields for overall sensor
+	EPAAQI           int     // US EPA AQI value (highest of PM2.5 and PM10)
+	EPAPM25AQI       int     // US EPA PM2.5 AQI
+	EPAPM10AQI       int     // US EPA PM10 AQI
+	EPAAQICategory   string  // US EPA AQI category
+	EPAAQIColor      string  // US EPA AQI color
 }
 
 // set up a global logger...
@@ -259,6 +273,7 @@ func main() {
 			panic(err)
 		}
 		normalizePaStatus(pastatus)
+		calculateEPAAQI(pastatus)
 
 		// if we don't set the specific topic, then we can grab and set the topic from the Geo field
 		// this is useful if you're polling from multiple different sensors and aggregating them and
@@ -271,6 +286,8 @@ func main() {
 		logger.Infof("Sensor 1 AQI: %d", pastatus.PM25Aqi)
 		logger.Infof("Sensor 2 Color: %s", pastatus.PM25AqiColorB)
 		logger.Infof("Sensor 2 AQI: %d", pastatus.B.PM25Aqi)
+		logger.Infof("US EPA AQI: %d (%s - %s)", pastatus.EPAAQI, pastatus.EPAAQICategory, pastatus.EPAAQIColor)
+		logger.Infof("US EPA PM2.5 AQI: %d, PM10 AQI: %d", pastatus.EPAPM25AQI, pastatus.EPAPM10AQI)
 
 		if config.Influx != (tomlConfigInflux{}) {
 			write_influx(pastatus, &pastatus.A, &pastatus.B)
@@ -343,6 +360,53 @@ func normalizePaStatus(pastatus *purpleAirStatus) *purpleAirStatus {
 	return pastatus
 }
 
+func calculateEPAAQI(pastatus *purpleAirStatus) {
+	// Calculate EPA AQI for sensor A
+	if pastatus.A.PM25Cf1 > 0 || pastatus.A.PM100Cf1 > 0 {
+		aqiResult := CalculateOverallAQI(pastatus.A.PM25Cf1, pastatus.A.PM100Cf1)
+		pastatus.A.EPAAQI = aqiResult.AQI
+		pastatus.A.EPAAQICategory = aqiResult.Category
+		pastatus.A.EPAAQIColor = aqiResult.Color
+		
+		// Also calculate individual PM2.5 and PM10 AQI values
+		pm25Result := CalculatePM25AQI(pastatus.A.PM25Cf1)
+		pastatus.A.EPAPM25AQI = pm25Result.AQI
+		
+		pm10Result := CalculatePM10AQI(pastatus.A.PM100Cf1)
+		pastatus.A.EPAPM10AQI = pm10Result.AQI
+	}
+	
+	// Calculate EPA AQI for sensor B
+	if pastatus.B.PM25Cf1 > 0 || pastatus.B.PM100Cf1 > 0 {
+		aqiResult := CalculateOverallAQI(pastatus.B.PM25Cf1, pastatus.B.PM100Cf1)
+		pastatus.B.EPAAQI = aqiResult.AQI
+		pastatus.B.EPAAQICategory = aqiResult.Category
+		pastatus.B.EPAAQIColor = aqiResult.Color
+		
+		// Also calculate individual PM2.5 and PM10 AQI values
+		pm25Result := CalculatePM25AQI(pastatus.B.PM25Cf1)
+		pastatus.B.EPAPM25AQI = pm25Result.AQI
+		
+		pm10Result := CalculatePM10AQI(pastatus.B.PM100Cf1)
+		pastatus.B.EPAPM10AQI = pm10Result.AQI
+	}
+	
+	// Calculate overall EPA AQI (average of both sensors)
+	if pastatus.PM25Cf1 > 0 || pastatus.PM100Cf1 > 0 {
+		aqiResult := CalculateOverallAQI(pastatus.PM25Cf1, pastatus.PM100Cf1)
+		pastatus.EPAAQI = aqiResult.AQI
+		pastatus.EPAAQICategory = aqiResult.Category
+		pastatus.EPAAQIColor = aqiResult.Color
+		
+		// Also calculate individual PM2.5 and PM10 AQI values
+		pm25Result := CalculatePM25AQI(pastatus.PM25Cf1)
+		pastatus.EPAPM25AQI = pm25Result.AQI
+		
+		pm10Result := CalculatePM10AQI(pastatus.PM100Cf1)
+		pastatus.EPAPM10AQI = pm10Result.AQI
+	}
+}
+
 func getJson(url string, target interface{}, myClient *http.Client) error {
 	return retry.Do(
 		func() error {
@@ -371,6 +435,13 @@ func status_to_point(status *purpleAirStatus) (*influxclient.Point, error) {
 	values["pressure"] = status.Pressure
 	values["dewpoint"] = status.Dewpoint
 	values["rssi"] = status.RSSI
+	
+	// Add US EPA AQI values
+	values["epa_aqi"] = status.EPAAQI
+	values["epa_pm25_aqi"] = status.EPAPM25AQI
+	values["epa_pm10_aqi"] = status.EPAPM10AQI
+	values["epa_aqi_category"] = status.EPAAQICategory
+	values["epa_aqi_color"] = status.EPAAQIColor
 
 	measurementName := "purpleair_status"
 	if config.Influx.StatusMeasurementName != "" {
@@ -405,6 +476,13 @@ func monitor_to_point(monitor *purpleAirMonitor) (*influxclient.Point, error) {
 	values["key2_response_date"] = monitor.Key2ResponseDate
 	values["key2_count"] = monitor.Key2Count
 	values["ts_s_latency"] = monitor.TsSLatency
+	
+	// Add US EPA AQI values
+	values["epa_aqi"] = monitor.EPAAQI
+	values["epa_pm25_aqi"] = monitor.EPAPM25AQI
+	values["epa_pm10_aqi"] = monitor.EPAPM10AQI
+	values["epa_aqi_category"] = monitor.EPAAQICategory
+	values["epa_aqi_color"] = monitor.EPAAQIColor
 
 	measurementName := "purpleair_monitor"
 	if config.Influx.MeasurementName != "" {
@@ -419,7 +497,7 @@ func write_influx(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB 
 		Addr: fmt.Sprintf("http://%s:%d", config.Influx.Hostname, config.Influx.Port),
 	})
 	if err != nil {
-		logger.Errorf("Error creating InfluxDB Client: ", err.Error())
+		logger.Errorf("Error creating InfluxDB Client: %s", err.Error())
 	}
 	defer c.Close()
 
@@ -474,5 +552,28 @@ func publishMQTT(status *purpleAirStatus) {
 		token := client.Publish(topic, 0, false, fmt.Sprintf("%v", fieldValue))
 		token.Wait()
 	}
+	
+	// Also publish sensor A and B EPA AQI values
+	publishSensorEPAAQI(&status.A, "A")
+	publishSensorEPAAQI(&status.B, "B")
+}
 
+func publishSensorEPAAQI(monitor *purpleAirMonitor, sensor string) {
+	// Publish EPA AQI values for individual sensors
+	baseTopic := fmt.Sprintf("%s/%s/sensor_%s", config.Mqtt.TopicPrefix, config.Mqtt.Topic, sensor)
+	
+	token := client.Publish(fmt.Sprintf("%s/epa_aqi", baseTopic), 0, false, fmt.Sprintf("%d", monitor.EPAAQI))
+	token.Wait()
+	
+	token = client.Publish(fmt.Sprintf("%s/epa_pm25_aqi", baseTopic), 0, false, fmt.Sprintf("%d", monitor.EPAPM25AQI))
+	token.Wait()
+	
+	token = client.Publish(fmt.Sprintf("%s/epa_pm10_aqi", baseTopic), 0, false, fmt.Sprintf("%d", monitor.EPAPM10AQI))
+	token.Wait()
+	
+	token = client.Publish(fmt.Sprintf("%s/epa_aqi_category", baseTopic), 0, false, monitor.EPAAQICategory)
+	token.Wait()
+	
+	token = client.Publish(fmt.Sprintf("%s/epa_aqi_color", baseTopic), 0, false, monitor.EPAAQIColor)
+	token.Wait()
 }
