@@ -1,0 +1,43 @@
+# Example configuration file for purpleair2mqtt
+# Copy this file to config.toml and modify as needed
+
+[purpleair]
+    # URL of your PurpleAir sensor's JSON endpoint
+    url = "http://192.168.1.24/json"
+    # How often to poll the sensor (in seconds)
+    poll_rate = 120
+    # HTTP request timeout (in seconds)
+    timeout = 15
+
+[mqtt]
+    # MQTT broker hostname
+    broker_host = "localhost"
+    # MQTT broker port
+    broker_port = 1883
+    # MQTT client ID
+    client_id = "purpleair2mqtt"
+    # MQTT topic prefix (default: "purpleair")
+    topic_prefix = "airquality"
+    # MQTT topic name (if empty, uses sensor's Geo field)
+    topic = ""
+    # MQTT authentication (optional)
+    # broker_username = "username"
+    # broker_password = "password"
+
+# Home Assistant integration (optional)
+# [hass]
+#     discovery = true
+#     discovery_prefix = "homeassistant"
+#     device_model = "pa-sd-ii"
+#     device_name = "pa-sd-ii"
+#     object_id = "pa-sd-ii"
+
+# InfluxDB integration (optional)
+# [influx]
+#     hostname = "localhost"
+#     port = 8086
+#     database = "purpleair"
+#     username = "your_username"
+#     password = "your_password"
+#     measurement_name = "purpleair_monitor"
+#     status_measurement_name = "purpleair_status"
