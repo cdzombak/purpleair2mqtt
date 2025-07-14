@@ -56,12 +56,12 @@ var aqiCategories = []struct {
 	Category  string
 	Color     string
 }{
-	{50, "Good", "Green"},
-	{100, "Moderate", "Yellow"},
-	{150, "Unhealthy for Sensitive Groups", "Orange"},
-	{200, "Unhealthy", "Red"},
-	{300, "Very Unhealthy", "Purple"},
-	{500, "Hazardous", "Maroon"},
+	{50, "Good", "rgb(0,228,0)"},
+	{100, "Moderate", "rgb(255,255,0)"},
+	{150, "Unhealthy for Sensitive Groups", "rgb(255,126,0)"},
+	{200, "Unhealthy", "rgb(255,0,0)"},
+	{300, "Very Unhealthy", "rgb(143,63,151)"},
+	{500, "Hazardous", "rgb(126,0,35)"},
 }
 
 // CalculateAQI calculates the AQI value from a concentration using the provided breakpoints
@@ -179,7 +179,7 @@ func CalculatePM10AQI(concentration float32) AQIResult {
 	// If AQI > 500, it's still Hazardous
 	if aqi > 500 {
 		category = "Hazardous"
-		color = "Maroon"
+		color = "rgb(126,0,35)"
 	}
 
 	// Sensitive groups for PM10
