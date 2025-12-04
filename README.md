@@ -140,9 +140,8 @@ docker build -t pridkett/purpleair2mqtt .
 
 ### Running the Container from `docker-compose`
 
-License
--------
+## Authors & License
 
-Copyright (c) 2022 Patrick Wagstrom
+Copyright (c) 2022 [Patrick Wagstrom](https://github.com/pridkett); modifications (c) 2025 [Chris Dzombak](https://github.com/cdzombak)
 
-Licensed under the terms of the MIT License
+Licensed under the terms of the MIT License; see [LICENSE](LICENSE) in this repo.
