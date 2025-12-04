@@ -13,21 +13,21 @@ func TestCalculatePM25AQI(t *testing.T) {
 		expectedCat   string
 		expectedColor string
 	}{
-		{"Good - Low", 5.0, 21, "Good", "Green"},
-		{"Good - High", 12.0, 50, "Good", "Green"},
-		{"Moderate - Low", 12.1, 51, "Moderate", "Yellow"},
-		{"Moderate - Mid", 23.75, 75, "Moderate", "Yellow"},
-		{"Moderate - High", 35.4, 100, "Moderate", "Yellow"},
-		{"USG - Low", 35.5, 101, "Unhealthy for Sensitive Groups", "Orange"},
-		{"USG - High", 55.4, 150, "Unhealthy for Sensitive Groups", "Orange"},
-		{"Unhealthy - Low", 55.5, 151, "Unhealthy", "Red"},
-		{"Unhealthy - Mid", 100.0, 174, "Unhealthy", "Red"},
-		{"Unhealthy - High", 150.4, 200, "Unhealthy", "Red"},
-		{"Very Unhealthy - Low", 150.5, 201, "Very Unhealthy", "Purple"},
-		{"Very Unhealthy - High", 250.4, 300, "Very Unhealthy", "Purple"},
-		{"Hazardous - Low", 250.5, 301, "Hazardous", "Maroon"},
-		{"Hazardous - High", 500.4, 500, "Hazardous", "Maroon"},
-		{"Beyond AQI", 600.0, 566, "Hazardous", "Maroon"},
+		{"Good - Low", 5.0, 21, "Good", "rgb(0,228,0)"},
+		{"Good - High", 12.0, 50, "Good", "rgb(0,228,0)"},
+		{"Moderate - Low", 12.1, 51, "Moderate", "rgb(255,255,0)"},
+		{"Moderate - Mid", 23.75, 75, "Moderate", "rgb(255,255,0)"},
+		{"Moderate - High", 35.4, 100, "Moderate", "rgb(255,255,0)"},
+		{"USG - Low", 35.5, 101, "Unhealthy for Sensitive Groups", "rgb(255,126,0)"},
+		{"USG - High", 55.4, 150, "Unhealthy for Sensitive Groups", "rgb(255,126,0)"},
+		{"Unhealthy - Low", 55.5, 151, "Unhealthy", "rgb(255,0,0)"},
+		{"Unhealthy - Mid", 100.0, 174, "Unhealthy", "rgb(255,0,0)"},
+		{"Unhealthy - High", 150.4, 200, "Unhealthy", "rgb(255,0,0)"},
+		{"Very Unhealthy - Low", 150.5, 201, "Very Unhealthy", "rgb(143,63,151)"},
+		{"Very Unhealthy - High", 250.4, 300, "Very Unhealthy", "rgb(143,63,151)"},
+		{"Hazardous - Low", 250.5, 301, "Hazardous", "rgb(126,0,35)"},
+		{"Hazardous - High", 500.4, 500, "Hazardous", "rgb(126,0,35)"},
+		{"Beyond AQI", 600.0, 566, "Hazardous", "rgb(126,0,35)"},
 	}
 
 	for _, tt := range tests {
@@ -54,17 +54,17 @@ func TestCalculatePM10AQI(t *testing.T) {
 		expectedCat   string
 		expectedColor string
 	}{
-		{"Good - Low", 25.0, 23, "Good", "Green"},
-		{"Good - High", 54.0, 50, "Good", "Green"},
-		{"Moderate - Low", 55.0, 51, "Moderate", "Yellow"},
-		{"Moderate - Mid", 100.0, 73, "Moderate", "Yellow"},
-		{"Moderate - High", 154.0, 100, "Moderate", "Yellow"},
-		{"USG - Low", 155.0, 101, "Unhealthy for Sensitive Groups", "Orange"},
-		{"USG - High", 254.0, 150, "Unhealthy for Sensitive Groups", "Orange"},
-		{"Unhealthy - Low", 255.0, 151, "Unhealthy", "Red"},
-		{"Unhealthy - High", 354.0, 200, "Unhealthy", "Red"},
-		{"Very Unhealthy - Low", 355.0, 201, "Very Unhealthy", "Purple"},
-		{"Hazardous", 425.0, 301, "Hazardous", "Maroon"},
+		{"Good - Low", 25.0, 23, "Good", "rgb(0,228,0)"},
+		{"Good - High", 54.0, 50, "Good", "rgb(0,228,0)"},
+		{"Moderate - Low", 55.0, 51, "Moderate", "rgb(255,255,0)"},
+		{"Moderate - Mid", 100.0, 73, "Moderate", "rgb(255,255,0)"},
+		{"Moderate - High", 154.0, 100, "Moderate", "rgb(255,255,0)"},
+		{"USG - Low", 155.0, 101, "Unhealthy for Sensitive Groups", "rgb(255,126,0)"},
+		{"USG - High", 254.0, 150, "Unhealthy for Sensitive Groups", "rgb(255,126,0)"},
+		{"Unhealthy - Low", 255.0, 151, "Unhealthy", "rgb(255,0,0)"},
+		{"Unhealthy - High", 354.0, 200, "Unhealthy", "rgb(255,0,0)"},
+		{"Very Unhealthy - Low", 355.0, 201, "Very Unhealthy", "rgb(143,63,151)"},
+		{"Hazardous", 425.0, 301, "Hazardous", "rgb(126,0,35)"},
 	}
 
 	for _, tt := range tests {
@@ -121,5 +121,5 @@ func ExampleCalculatePM25AQI() {
 	// PM2.5 concentration: 35.5 μg/m³
 	// AQI: 101
 	// Category: Unhealthy for Sensitive Groups
-	// Color: Orange
+	// Color: rgb(255,126,0)
 }
