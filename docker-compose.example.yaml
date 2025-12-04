@@ -1,10 +1,8 @@
-version: "3"
-
 services:
   purpleair2mqtt:
+    image: cdzombak/purpleair2mqtt:1
     container_name: purpleair2mqtt
-    hostname: purpleair2mqtt
-    image: pridkett/purpleair2mqtt
-    volumes:
-      - './config.toml:/config.toml'
     restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./config.toml:/config.toml:ro

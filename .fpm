@@ -1,0 +1,6 @@
+-s dir
+--name purpleair2mqtt
+--description "Bridge PurpleAir air quality sensors to MQTT and InfluxDB"
+--url "https://github.com/cdzombak/purpleair2mqtt"
+--maintainer "Chris Dzombak <https://www.dzombak.com>"
+--license MIT

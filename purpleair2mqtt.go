@@ -18,6 +18,8 @@ import (
 	influxclient "github.com/influxdata/influxdb1-client/v2"
 )
 
+var version = "<dev>"
+
 // MQTT settings for overall configuration
 type tomlConfigMQTT struct {
 	BrokerHost     string
@@ -218,7 +220,13 @@ func main() {
 	logger = log.New(os.Stderr).WithColor()
 
 	configFile := flag.String("config", "", "Filename with configuration")
+	printVersion := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
+
+	if *printVersion {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 
 	if *configFile != "" {
 		f, err := os.Open(*configFile)
