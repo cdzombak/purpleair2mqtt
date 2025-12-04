@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Derive version string
         id: bin_version
         run: echo "bin_version=$(./.version.sh)" >> "$GITHUB_OUTPUT"
@@ -79,7 +79,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
@@ -90,7 +90,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
@@ -101,7 +101,7 @@ jobs:
     name: actionlint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: actionlint
         uses: raven-actions/actionlint@v2
 
@@ -115,7 +115,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Login to GHCR
         if: needs.meta.outputs.is_pull_request != 'true'
@@ -190,7 +190,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -259,7 +259,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Update running major/minor version tags
         uses: sersoft-gmbh/running-release-tags-action@v3
         with:
