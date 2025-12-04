@@ -126,7 +126,7 @@ type purpleAirStatus struct {
 	Dewpoint           int     `json:"current_dewpoint_f"` // current dewpoint in fahrenheit rounded to nearest degree
 	Pressure           float32 `json:"pressure"`           // current pressure in mmHg
 
-	A                purpleAirMonitor `json:sensor_a,omitempty` // breakout for sensor a
+	A                purpleAirMonitor `json:"sensor_a,omitempty"` // breakout for sensor a
 	PM25AqiColor     string           `json:"p25aqic"`
 	PM25Aqi          int              `json:"pm2.5_aqi"`
 	PM10Cf1          float32          `json:"pm1_0_cf_1"`
@@ -150,7 +150,7 @@ type purpleAirStatus struct {
 	Key2Count        int              `json:"key2_count"`
 	TsSLatency       int              `json:"ts_s_latency"`
 
-	B                 purpleAirMonitor `json:sensor_b,omitempty` // breakout for sensor b
+	B                 purpleAirMonitor `json:"sensor_b,omitempty"` // breakout for sensor b
 	PM25AqiColorB     string           `json:"p25aqic_b"`
 	PM25AqiB          int              `json:"pm2.5_aqi_b"`
 	PM10Cf1B          float32          `json:"pm1_0_cf_1_b"`
@@ -235,7 +235,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		if err := toml.NewDecoder(f).Decode(&config); err != nil {
 			panic(err)
 		}
@@ -427,7 +427,7 @@ func getJson(url string, target interface{}, myClient *http.Client) error {
 			if err != nil {
 				return err
 			}
-			defer r.Body.Close()
+			defer func() { _ = r.Body.Close() }()
 			return json.NewDecoder(r.Body).Decode(target)
 		},
 		retry.Attempts(5),
@@ -512,7 +512,7 @@ func write_influx(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB 
 	if err != nil {
 		logger.Errorf("Error creating InfluxDB Client: %s", err.Error())
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	bp, err := influxclient.NewBatchPoints(influxclient.BatchPointsConfig{
 		Database:  config.Influx.Database,
