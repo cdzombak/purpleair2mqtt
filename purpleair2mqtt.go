@@ -95,7 +95,8 @@ type purpleAirMonitor struct {
 	EPAPM25AQI     int    // US EPA PM2.5 AQI
 	EPAPM10AQI     int    // US EPA PM10 AQI
 	EPAAQICategory string // US EPA AQI category
-	EPAAQIColor    string // US EPA AQI color
+	EPAAQIColor    string // US EPA AQI color (English name)
+	EPAAQIColorRGB string // US EPA AQI color (RGB value)
 }
 
 type purpleAirStatus struct {
@@ -195,7 +196,8 @@ type purpleAirStatus struct {
 	EPAPM25AQI     int    // US EPA PM2.5 AQI
 	EPAPM10AQI     int    // US EPA PM10 AQI
 	EPAAQICategory string // US EPA AQI category
-	EPAAQIColor    string // US EPA AQI color
+	EPAAQIColor    string // US EPA AQI color (English name)
+	EPAAQIColorRGB string // US EPA AQI color (RGB value)
 }
 
 // set up a global logger...
@@ -375,6 +377,7 @@ func calculateEPAAQI(pastatus *purpleAirStatus) {
 		pastatus.A.EPAAQI = aqiResult.AQI
 		pastatus.A.EPAAQICategory = aqiResult.Category
 		pastatus.A.EPAAQIColor = aqiResult.Color
+		pastatus.A.EPAAQIColorRGB = aqiResult.ColorRGB
 
 		// Also calculate individual PM2.5 and PM10 AQI values
 		pm25Result := CalculatePM25AQI(pastatus.A.PM25Cf1)
@@ -390,6 +393,7 @@ func calculateEPAAQI(pastatus *purpleAirStatus) {
 		pastatus.B.EPAAQI = aqiResult.AQI
 		pastatus.B.EPAAQICategory = aqiResult.Category
 		pastatus.B.EPAAQIColor = aqiResult.Color
+		pastatus.B.EPAAQIColorRGB = aqiResult.ColorRGB
 
 		// Also calculate individual PM2.5 and PM10 AQI values
 		pm25Result := CalculatePM25AQI(pastatus.B.PM25Cf1)
@@ -405,6 +409,7 @@ func calculateEPAAQI(pastatus *purpleAirStatus) {
 		pastatus.EPAAQI = aqiResult.AQI
 		pastatus.EPAAQICategory = aqiResult.Category
 		pastatus.EPAAQIColor = aqiResult.Color
+		pastatus.EPAAQIColorRGB = aqiResult.ColorRGB
 
 		// Also calculate individual PM2.5 and PM10 AQI values
 		pm25Result := CalculatePM25AQI(pastatus.PM25Cf1)
@@ -450,6 +455,7 @@ func status_to_point(status *purpleAirStatus) (*influxclient.Point, error) {
 	values["epa_pm10_aqi"] = status.EPAPM10AQI
 	values["epa_aqi_category"] = status.EPAAQICategory
 	values["epa_aqi_color"] = status.EPAAQIColor
+	values["epa_aqi_color_rgb"] = status.EPAAQIColorRGB
 
 	measurementName := "purpleair_status"
 	if config.Influx.StatusMeasurementName != "" {
@@ -489,6 +495,7 @@ func monitor_to_point(monitor *purpleAirMonitor) (*influxclient.Point, error) {
 	values["epa_pm10_aqi"] = monitor.EPAPM10AQI
 	values["epa_aqi_category"] = monitor.EPAAQICategory
 	values["epa_aqi_color"] = monitor.EPAAQIColor
+	values["epa_aqi_color_rgb"] = monitor.EPAAQIColorRGB
 
 	measurementName := "purpleair_monitor"
 	if config.Influx.MeasurementName != "" {
@@ -580,5 +587,8 @@ func publishSensorEPAAQI(monitor *purpleAirMonitor, sensor string) {
 	token.Wait()
 
 	token = client.Publish(fmt.Sprintf("%s/epa_aqi_color", baseTopic), 0, false, monitor.EPAAQIColor)
+	token.Wait()
+
+	token = client.Publish(fmt.Sprintf("%s/epa_aqi_color_rgb", baseTopic), 0, false, monitor.EPAAQIColorRGB)
 	token.Wait()
 }

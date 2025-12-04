@@ -8,7 +8,8 @@ import (
 type AQIResult struct {
 	AQI            int
 	Category       string
-	Color          string
+	Color          string // English color name (Green, Yellow, Orange, Red, Purple, Maroon)
+	ColorRGB       string // RGB color value (e.g., "rgb(0,228,0)")
 	SensitiveGroup string
 }
 
@@ -55,13 +56,14 @@ var aqiCategories = []struct {
 	Threshold int
 	Category  string
 	Color     string
+	ColorRGB  string
 }{
-	{50, "Good", "rgb(0,228,0)"},
-	{100, "Moderate", "rgb(255,255,0)"},
-	{150, "Unhealthy for Sensitive Groups", "rgb(255,126,0)"},
-	{200, "Unhealthy", "rgb(255,0,0)"},
-	{300, "Very Unhealthy", "rgb(143,63,151)"},
-	{500, "Hazardous", "rgb(126,0,35)"},
+	{50, "Good", "Green", "rgb(0,228,0)"},
+	{100, "Moderate", "Yellow", "rgb(255,255,0)"},
+	{150, "Unhealthy for Sensitive Groups", "Orange", "rgb(255,126,0)"},
+	{200, "Unhealthy", "Red", "rgb(255,0,0)"},
+	{300, "Very Unhealthy", "Purple", "rgb(143,63,151)"},
+	{500, "Hazardous", "Maroon", "rgb(126,0,35)"},
 }
 
 // CalculateAQI calculates the AQI value from a concentration using the provided breakpoints
@@ -130,12 +132,14 @@ func CalculatePM25AQI(concentration float32) AQIResult {
 
 	category := ""
 	color := ""
+	colorRGB := ""
 
 	// Determine category and color
 	for _, info := range aqiCategories {
 		if aqi <= info.Threshold {
 			category = info.Category
 			color = info.Color
+			colorRGB = info.ColorRGB
 			break
 		}
 	}
@@ -144,6 +148,7 @@ func CalculatePM25AQI(concentration float32) AQIResult {
 	if aqi > 500 {
 		category = aqiCategories[len(aqiCategories)-1].Category
 		color = aqiCategories[len(aqiCategories)-1].Color
+		colorRGB = aqiCategories[len(aqiCategories)-1].ColorRGB
 	}
 
 	// Sensitive groups for PM2.5
@@ -156,6 +161,7 @@ func CalculatePM25AQI(concentration float32) AQIResult {
 		AQI:            aqi,
 		Category:       category,
 		Color:          color,
+		ColorRGB:       colorRGB,
 		SensitiveGroup: sensitiveGroup,
 	}
 }
@@ -166,20 +172,23 @@ func CalculatePM10AQI(concentration float32) AQIResult {
 
 	category := ""
 	color := ""
+	colorRGB := ""
 
 	// Determine category and color
 	for _, info := range aqiCategories {
 		if aqi <= info.Threshold {
 			category = info.Category
 			color = info.Color
+			colorRGB = info.ColorRGB
 			break
 		}
 	}
 
 	// If AQI > 500, it's still Hazardous
 	if aqi > 500 {
-		category = "Hazardous"
-		color = "rgb(126,0,35)"
+		category = aqiCategories[len(aqiCategories)-1].Category
+		color = aqiCategories[len(aqiCategories)-1].Color
+		colorRGB = aqiCategories[len(aqiCategories)-1].ColorRGB
 	}
 
 	// Sensitive groups for PM10
@@ -192,6 +201,7 @@ func CalculatePM10AQI(concentration float32) AQIResult {
 		AQI:            aqi,
 		Category:       category,
 		Color:          color,
+		ColorRGB:       colorRGB,
 		SensitiveGroup: sensitiveGroup,
 	}
 }

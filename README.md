@@ -20,8 +20,7 @@ Once you have your PurpleAir monitor connected to your local network, you can ac
 
 This provides an excellent way to get real-time information from a local device without needing to manage API keys or even make calls out to the public internet. It's this JSON payload that the program parses.
 
-US EPA AQI Calculation
----------------------
+## US EPA AQI Calculation
 
 The program calculates the US EPA Air Quality Index (AQI) based on the PM2.5 and PM10 concentration values reported by the PurpleAir sensor. The calculation follows the official EPA breakpoints and formulas as specified in the [Technical Assistance Document for the Reporting of Daily Air Quality](https://document.airnow.gov/technical-assistance-document-for-the-reporting-of-daily-air-quailty.pdf).
 
@@ -30,7 +29,8 @@ The following AQI values are calculated and published:
 - **PM2.5 AQI**: AQI calculated from PM2.5 concentration
 - **PM10 AQI**: AQI calculated from PM10 concentration
 - **AQI Category**: Good, Moderate, Unhealthy for Sensitive Groups, Unhealthy, Very Unhealthy, or Hazardous
-- **AQI Color**: Green, Yellow, Orange, Red, Purple, or Maroon
+- **AQI Color**: English color name (Green, Yellow, Orange, Red, Purple, Maroon)
+- **AQI Color RGB**: RGB color value (e.g., `rgb(0,228,0)` for Good, `rgb(255,0,0)` for Unhealthy)
 
 These values are published via MQTT and stored in InfluxDB alongside the existing PurpleAir data.
 
@@ -103,8 +103,7 @@ Grafana Integration
 
 This application has some lightweight Grafana integration, but it's not what I'd call fancy. I'll document that more in the future.
 
-MQTT Topics
------------
+## MQTT Topics
 
 The application publishes data to the following MQTT topics (assuming default `airquality` prefix):
 
@@ -113,14 +112,16 @@ The application publishes data to the following MQTT topics (assuming default `a
 - `airquality/{sensor_name}/EPAPM25AQI` - US EPA PM2.5 AQI
 - `airquality/{sensor_name}/EPAPM10AQI` - US EPA PM10 AQI
 - `airquality/{sensor_name}/EPAAQICategory` - AQI category (e.g., "Good", "Moderate")
-- `airquality/{sensor_name}/EPAAQIColor` - AQI color (e.g., "Green", "Yellow")
+- `airquality/{sensor_name}/EPAAQIColor` - AQI color name (e.g., "Green", "Yellow")
+- `airquality/{sensor_name}/EPAAQIColorRGB` - AQI color as RGB string (e.g., `rgb(0,228,0)`)
 
 **Individual Sensor Topics** (for sensor A and B):
 - `airquality/{sensor_name}/sensor_A/epa_aqi` - EPA AQI for sensor A
 - `airquality/{sensor_name}/sensor_A/epa_pm25_aqi` - EPA PM2.5 AQI for sensor A
 - `airquality/{sensor_name}/sensor_A/epa_pm10_aqi` - EPA PM10 AQI for sensor A
 - `airquality/{sensor_name}/sensor_A/epa_aqi_category` - AQI category for sensor A
-- `airquality/{sensor_name}/sensor_A/epa_aqi_color` - AQI color for sensor A
+- `airquality/{sensor_name}/sensor_A/epa_aqi_color` - AQI color name for sensor A
+- `airquality/{sensor_name}/sensor_A/epa_aqi_color_rgb` - AQI color RGB for sensor A
 - (Same topics available for sensor_B)
 
 All existing PurpleAir data topics remain unchanged.
