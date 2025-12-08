@@ -3,7 +3,7 @@ module github.com/cdzombak/purpleair2mqtt
 go 1.24.0
 
 require (
-	github.com/avast/retry-go/v4 v4.6.1
+	github.com/avast/retry-go/v4 v4.7.0
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c
 	github.com/naoina/toml v0.1.1
