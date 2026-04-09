@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/cdzombak/heartbeat"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/naoina/toml"
 	"github.com/withmandala/go-log"
@@ -56,11 +57,19 @@ type tomlConfigPurpleAir struct {
 	Timeout  int // Timeout in seconds for HTTP requests
 }
 
+type tomlConfigHeartbeat struct {
+	URL        string // URL to GET for heartbeat pings
+	IntervalS  int    // Heartbeat interval in seconds
+	ThresholdS int    // Liveness threshold in seconds
+	HealthPort int    // Port for the health check HTTP server
+}
+
 type tomlConfig struct {
 	PurpleAir tomlConfigPurpleAir
 	Mqtt      tomlConfigMQTT
 	Hass      tomlConfigHass
 	Influx    tomlConfigInflux
+	Heartbeat tomlConfigHeartbeat
 }
 
 type purpleAirMonitor struct {
@@ -223,11 +232,28 @@ func main() {
 
 	configFile := flag.String("config", "", "Filename with configuration")
 	printVersion := flag.Bool("version", false, "Print version and exit")
+	healthcheck := flag.Bool("healthcheck", false, "Run a health check against the local health server and exit")
+	healthcheckURL := flag.String("healthcheck-url", "http://localhost:6001", "URL for the health check endpoint")
 	flag.Parse()
 
 	if *printVersion {
 		fmt.Println(version)
 		os.Exit(0)
+	}
+
+	if *healthcheck {
+		hcClient := &http.Client{Timeout: 5 * time.Second}
+		resp, err := hcClient.Get(*healthcheckURL)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "healthcheck failed: %s\n", err)
+			os.Exit(1)
+		}
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode == http.StatusOK {
+			os.Exit(0)
+		}
+		fmt.Fprintf(os.Stderr, "healthcheck failed: HTTP %d\n", resp.StatusCode)
+		os.Exit(1)
 	}
 
 	if *configFile != "" {
@@ -269,6 +295,32 @@ func main() {
 		}
 	}
 
+	var hb heartbeat.Heartbeat
+	if config.Heartbeat.URL != "" || config.Heartbeat.HealthPort != 0 {
+		thresholdS := config.Heartbeat.ThresholdS
+		if thresholdS == 0 {
+			thresholdS = config.PurpleAir.PollRate * 3
+		}
+		intervalS := config.Heartbeat.IntervalS
+		if intervalS == 0 {
+			intervalS = config.PurpleAir.PollRate
+		}
+		var err error
+		hb, err = heartbeat.NewHeartbeat(&heartbeat.Config{
+			HeartbeatInterval: time.Duration(intervalS) * time.Second,
+			LivenessThreshold: time.Duration(thresholdS) * time.Second,
+			HeartbeatURL:      config.Heartbeat.URL,
+			Port:              config.Heartbeat.HealthPort,
+			OnError: func(err error) {
+				logger.Errorf("heartbeat error: %s", err)
+			},
+		})
+		if err != nil {
+			logger.Fatalf("failed to create heartbeat: %s", err)
+		}
+		hb.Start()
+	}
+
 	logger.Infof("HTTP Target: %s", config.PurpleAir.Url)
 	timeout := 15
 	if config.PurpleAir.Timeout > 0 {
@@ -299,8 +351,13 @@ func main() {
 		logger.Infof("US EPA AQI: %d (%s - %s)", pastatus.EPAAQI, pastatus.EPAAQICategory, pastatus.EPAAQIColor)
 		logger.Infof("US EPA PM2.5 AQI: %d, PM10 AQI: %d", pastatus.EPAPM25AQI, pastatus.EPAPM10AQI)
 
+		pollOK := true
+
 		if config.Influx != (tomlConfigInflux{}) {
-			write_influx(pastatus, &pastatus.A, &pastatus.B)
+			if err := writeInflux(pastatus, &pastatus.A, &pastatus.B); err != nil {
+				logger.Errorf("InfluxDB write failed: %s", err)
+				pollOK = false
+			}
 		}
 
 		if config.Mqtt != (tomlConfigMQTT{}) {
@@ -308,6 +365,10 @@ func main() {
 				config.Mqtt.Topic = pastatus.Geo
 			}
 			publishMQTT(pastatus)
+		}
+
+		if pollOK && hb != nil {
+			hb.Alive(time.Now())
 		}
 
 		logger.Debugf("Sleeping for %d seconds", config.PurpleAir.PollRate)
@@ -505,12 +566,12 @@ func monitor_to_point(monitor *purpleAirMonitor) (*influxclient.Point, error) {
 	return influxclient.NewPoint(measurementName, tags, values, time.Now())
 }
 
-func write_influx(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB *purpleAirMonitor) {
+func writeInflux(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB *purpleAirMonitor) error {
 	c, err := influxclient.NewHTTPClient(influxclient.HTTPConfig{
 		Addr: fmt.Sprintf("http://%s:%d", config.Influx.Hostname, config.Influx.Port),
 	})
 	if err != nil {
-		logger.Errorf("Error creating InfluxDB Client: %s", err.Error())
+		return fmt.Errorf("error creating InfluxDB Client: %w", err)
 	}
 	defer func() { _ = c.Close() }()
 
@@ -519,32 +580,31 @@ func write_influx(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB 
 		Precision: "s",
 	})
 	if err != nil {
-		logger.Errorf("error creating batchpoints: %s", err)
+		return fmt.Errorf("error creating batchpoints: %w", err)
 	}
 
 	pointA, err := monitor_to_point(monitorA)
 	if err != nil {
-		logger.Errorf("error translating monitor sample to point")
+		return fmt.Errorf("error translating monitor sample to point: %w", err)
 	}
 	bp.AddPoint(pointA)
 
 	pointB, err := monitor_to_point(monitorB)
 	if err != nil {
-		logger.Errorf("error translating monitor sample to point")
+		return fmt.Errorf("error translating monitor sample to point: %w", err)
 	}
 	bp.AddPoint(pointB)
 
 	pointS, err := status_to_point(status)
 	if err != nil {
-		logger.Errorf("error translating status to point")
+		return fmt.Errorf("error translating status to point: %w", err)
 	}
 	bp.AddPoint(pointS)
 
-	err = c.Write(bp)
-
-	if err != nil {
-		logger.Fatal(err)
+	if err = c.Write(bp); err != nil {
+		return fmt.Errorf("error writing to InfluxDB: %w", err)
 	}
+	return nil
 }
 
 func publishMQTT(status *purpleAirStatus) {

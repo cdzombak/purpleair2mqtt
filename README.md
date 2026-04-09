@@ -103,6 +103,27 @@ Finally, if you'd like to use the native InfluxDB integration, this section shou
     password = "YOUR_PASSWORD"
 ```
 
+Optionally, you can configure a heartbeat to monitor the health of the application. This works well with [Uptime Kuma](https://github.com/louislam/uptime-kuma)'s push monitors. The heartbeat is sent after each successful poll cycle (i.e. after successfully polling PurpleAir and writing to all configured outputs). If any operation fails, the heartbeat is not sent.
+
+You can configure an outgoing heartbeat URL, a local health check HTTP server, or both:
+
+```toml
+[heartbeat]
+    # URL to GET for heartbeat pings (e.g. Uptime Kuma push URL).
+    # Optional; at least one of url or health_port must be set.
+    url = "https://uptimekuma.example.com:9001/api/push/abcd1234?status=up&msg=OK&ping="
+    # Heartbeat ping interval in seconds (default: poll_rate)
+    interval_s = 120
+    # Liveness threshold in seconds. If no successful poll has occurred within
+    # this period, outgoing heartbeats are paused and the health endpoint
+    # reports unhealthy. (default: poll_rate * 3)
+    threshold_s = 360
+    # Port for the health check HTTP server. A GET to / returns {"ok":true}
+    # with HTTP 200 when healthy, or {"ok":false} with HTTP 503 when unhealthy.
+    # Optional; at least one of url or health_port must be set.
+    health_port = 6001
+```
+
 ## Building the Application
 
 To build for the current platform:
@@ -137,6 +158,8 @@ Run `make help` to see all available targets.
 
 - `-config <file>`: Path to the TOML configuration file (required)
 - `-version`: Print version and exit
+- `-healthcheck`: Run a health check against the local health server and exit
+- `-healthcheck-url <url>`: URL for the health check endpoint (default: `http://localhost:6001`)
 
 ## Running with Docker
 
@@ -166,6 +189,18 @@ services:
     network_mode: host
     volumes:
       - ./config.toml:/config.toml:ro
+```
+
+### Docker Health Check
+
+If you configure `health_port` in the `[heartbeat]` section of your config file, the Docker image includes a built-in `HEALTHCHECK` that queries the health server on port 6001. To use a different port, override the healthcheck in your Docker Compose file:
+
+```yaml
+healthcheck:
+  test: ["/usr/bin/purpleair2mqtt", "-healthcheck", "-healthcheck-url", "http://localhost:YOUR_PORT"]
+  interval: 60s
+  timeout: 5s
+  retries: 3
 ```
 
 ### Building the Container Locally
