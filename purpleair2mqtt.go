@@ -364,7 +364,10 @@ func main() {
 			if config.Mqtt.Topic == "" {
 				config.Mqtt.Topic = pastatus.Geo
 			}
-			publishMQTT(pastatus)
+			if err := publishMQTT(pastatus); err != nil {
+				logger.Errorf("MQTT publish failed: %s", err)
+				pollOK = false
+			}
 		}
 
 		if pollOK && hb != nil {
@@ -607,7 +610,7 @@ func writeInflux(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB *
 	return nil
 }
 
-func publishMQTT(status *purpleAirStatus) {
+func publishMQTT(status *purpleAirStatus) error {
 	v := reflect.ValueOf(*status)
 	typeOfStatus := v.Type()
 
@@ -624,31 +627,47 @@ func publishMQTT(status *purpleAirStatus) {
 		logger.Infof("topic = %s", topic)
 		token := client.Publish(topic, 0, false, fmt.Sprintf("%v", fieldValue))
 		token.Wait()
+		if err := token.Error(); err != nil {
+			return fmt.Errorf("error publishing to MQTT topic %s: %w", topic, err)
+		}
 	}
 
 	// Also publish sensor A and B EPA AQI values
-	publishSensorEPAAQI(&status.A, "A")
-	publishSensorEPAAQI(&status.B, "B")
+	if err := publishSensorEPAAQI(&status.A, "A"); err != nil {
+		return err
+	}
+	if err := publishSensorEPAAQI(&status.B, "B"); err != nil {
+		return err
+	}
+	return nil
 }
 
-func publishSensorEPAAQI(monitor *purpleAirMonitor, sensor string) {
+func publishSensorEPAAQI(monitor *purpleAirMonitor, sensor string) error {
 	baseTopic := fmt.Sprintf("%s/%s/sensor_%s", config.Mqtt.TopicPrefix, config.Mqtt.Topic, sensor)
 
-	token := client.Publish(fmt.Sprintf("%s/epa_aqi", baseTopic), 0, false, fmt.Sprintf("%d", monitor.EPAAQI))
-	token.Wait()
+	publish := func(topic string, payload string) error {
+		token := client.Publish(topic, 0, false, payload)
+		token.Wait()
+		if err := token.Error(); err != nil {
+			return fmt.Errorf("error publishing to MQTT topic %s: %w", topic, err)
+		}
+		return nil
+	}
 
-	token = client.Publish(fmt.Sprintf("%s/epa_pm25_aqi", baseTopic), 0, false, fmt.Sprintf("%d", monitor.EPAPM25AQI))
-	token.Wait()
-
-	token = client.Publish(fmt.Sprintf("%s/epa_pm10_aqi", baseTopic), 0, false, fmt.Sprintf("%d", monitor.EPAPM10AQI))
-	token.Wait()
-
-	token = client.Publish(fmt.Sprintf("%s/epa_aqi_category", baseTopic), 0, false, monitor.EPAAQICategory)
-	token.Wait()
-
-	token = client.Publish(fmt.Sprintf("%s/epa_aqi_color", baseTopic), 0, false, monitor.EPAAQIColor)
-	token.Wait()
-
-	token = client.Publish(fmt.Sprintf("%s/epa_aqi_color_rgb", baseTopic), 0, false, monitor.EPAAQIColorRGB)
-	token.Wait()
+	if err := publish(fmt.Sprintf("%s/epa_aqi", baseTopic), fmt.Sprintf("%d", monitor.EPAAQI)); err != nil {
+		return err
+	}
+	if err := publish(fmt.Sprintf("%s/epa_pm25_aqi", baseTopic), fmt.Sprintf("%d", monitor.EPAPM25AQI)); err != nil {
+		return err
+	}
+	if err := publish(fmt.Sprintf("%s/epa_pm10_aqi", baseTopic), fmt.Sprintf("%d", monitor.EPAPM10AQI)); err != nil {
+		return err
+	}
+	if err := publish(fmt.Sprintf("%s/epa_aqi_category", baseTopic), monitor.EPAAQICategory); err != nil {
+		return err
+	}
+	if err := publish(fmt.Sprintf("%s/epa_aqi_color", baseTopic), monitor.EPAAQIColor); err != nil {
+		return err
+	}
+	return publish(fmt.Sprintf("%s/epa_aqi_color_rgb", baseTopic), monitor.EPAAQIColorRGB)
 }
