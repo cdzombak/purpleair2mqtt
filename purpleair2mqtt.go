@@ -124,7 +124,7 @@ type purpleAirStatus struct {
 	Temperature        int     `json:"current_temp_f"`     // current fahrenheit temperature rounded to nearest degree
 	Humidity           int     `json:"current_humidity"`   // current humidity rounded to nearest percent
 	Dewpoint           int     `json:"current_dewpoint_f"` // current dewpoint in fahrenheit rounded to nearest degree
-	Pressure           float32 `json:"pressure"`           // current pressure in mmHg
+	Pressure           float32 `json:"pressure"`           // current pressure in millibars
 
 	A                purpleAirMonitor `json:"sensor_a,omitempty"` // breakout for sensor a
 	PM25AqiColor     string           `json:"p25aqic"`

@@ -226,14 +226,14 @@ This measurement contains overall sensor status data.
 - `sensorId` - MAC address of the sensor
 
 **Fields:**
-- `temperature` - Temperature in Fahrenheit
-- `humidity` - Relative humidity percentage
-- `pressure` - Atmospheric pressure in mmHg
-- `dewpoint` - Dewpoint in Fahrenheit
-- `rssi` - WiFi signal strength
-- `epa_aqi` - US EPA AQI value (highest of PM2.5 and PM10)
-- `epa_pm25_aqi` - US EPA PM2.5 AQI
-- `epa_pm10_aqi` - US EPA PM10 AQI
+- `temperature` - Temperature (°F)
+- `humidity` - Relative humidity (%)
+- `pressure` - Atmospheric pressure (mbar)
+- `dewpoint` - Dewpoint (°F)
+- `rssi` - WiFi signal strength (dBm)
+- `epa_aqi` - US EPA AQI value, highest of PM2.5 and PM10 (unitless, 0–500 scale)
+- `epa_pm25_aqi` - US EPA PM2.5 AQI (unitless, 0–500 scale)
+- `epa_pm10_aqi` - US EPA PM10 AQI (unitless, 0–500 scale)
 - `epa_aqi_category` - AQI category string (e.g., "Good", "Moderate")
 - `epa_aqi_color` - AQI color name (e.g., "Green", "Yellow")
 - `epa_aqi_color_rgb` - AQI color RGB value (e.g., "rgb(0,228,0)")
@@ -247,15 +247,31 @@ This measurement contains per-sensor particle data (one entry each for sensor A 
 - `sensor` - Sensor identifier ("A" or "B")
 
 **Fields:**
-- `pm2.5_aqic` - PurpleAir's AQI color
-- `pm2.5_aqi` - PurpleAir's AQI value
-- `pm1.0_cf_1`, `pm2.5_cf_1`, `pm10.0_cf_1` - CF=1 PM values
-- `pm1.0_atm`, `pm2.5_atm`, `pm10.0_atm` - ATM PM values
-- `pm0.3_um`, `pm0.5_um`, `pm1.0_um`, `pm2.5_um`, `pm5.0_um`, `pm10.0_um` - Particle counts
-- `key1_response`, `key2_response`, etc. - Response metrics
-- `epa_aqi` - US EPA AQI value
-- `epa_pm25_aqi` - US EPA PM2.5 AQI
-- `epa_pm10_aqi` - US EPA PM10 AQI
+- `pm2.5_aqic` - PurpleAir's AQI color (hex color string)
+- `pm2.5_aqi` - PurpleAir's AQI value (unitless)
+- `pm1.0_cf_1` - PM1.0 mass concentration, CF=1 standard particle (µg/m³)
+- `pm2.5_cf_1` - PM2.5 mass concentration, CF=1 standard particle (µg/m³)
+- `pm10.0_cf_1` - PM10 mass concentration, CF=1 standard particle (µg/m³)
+- `pm1.0_atm` - PM1.0 mass concentration, atmospheric environment (µg/m³)
+- `pm2.5_atm` - PM2.5 mass concentration, atmospheric environment (µg/m³)
+- `pm10.0_atm` - PM10 mass concentration, atmospheric environment (µg/m³)
+- `pm0.3_um` - Particle count, ≥0.3µm diameter (particles/dL)
+- `pm0.5_um` - Particle count, ≥0.5µm diameter (particles/dL)
+- `pm1.0_um` - Particle count, ≥1.0µm diameter (particles/dL)
+- `pm2.5_um` - Particle count, ≥2.5µm diameter (particles/dL)
+- `pm5.0_um` - Particle count, ≥5.0µm diameter (particles/dL)
+- `pm10.0_um` - Particle count, ≥10.0µm diameter (particles/dL)
+- `key1_response` - ThingSpeak channel 1 response code
+- `key1_response_date` - ThingSpeak channel 1 response timestamp (Unix epoch)
+- `key1_count` - ThingSpeak channel 1 response count
+- `ts_latency` - ThingSpeak channel 1 latency (ms)
+- `key2_response` - ThingSpeak channel 2 response code
+- `key2_response_date` - ThingSpeak channel 2 response timestamp (Unix epoch)
+- `key2_count` - ThingSpeak channel 2 response count
+- `ts_s_latency` - ThingSpeak channel 2 latency (ms)
+- `epa_aqi` - US EPA AQI value (unitless, 0–500 scale)
+- `epa_pm25_aqi` - US EPA PM2.5 AQI (unitless, 0–500 scale)
+- `epa_pm10_aqi` - US EPA PM10 AQI (unitless, 0–500 scale)
 - `epa_aqi_category` - AQI category string
 - `epa_aqi_color` - AQI color name
 - `epa_aqi_color_rgb` - AQI color RGB value
