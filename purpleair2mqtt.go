@@ -614,7 +614,9 @@ func publishMQTT(status *purpleAirStatus) error {
 		logger.Infof("field[%s] = [%v]", fieldName, fieldValue)
 		logger.Infof("topic = %s", topic)
 		token := client.Publish(topic, 0, false, fmt.Sprintf("%v", fieldValue))
-		token.Wait()
+		if !token.WaitTimeout(10 * time.Second) {
+			return fmt.Errorf("timeout publishing to MQTT topic %s", topic)
+		}
 		if err := token.Error(); err != nil {
 			return fmt.Errorf("error publishing to MQTT topic %s: %w", topic, err)
 		}
@@ -635,7 +637,9 @@ func publishSensorEPAAQI(monitor *purpleAirMonitor, sensor string) error {
 
 	publish := func(topic string, payload string) error {
 		token := client.Publish(topic, 0, false, payload)
-		token.Wait()
+		if !token.WaitTimeout(10 * time.Second) {
+			return fmt.Errorf("timeout publishing to MQTT topic %s", topic)
+		}
 		if err := token.Error(); err != nil {
 			return fmt.Errorf("error publishing to MQTT topic %s: %w", topic, err)
 		}
