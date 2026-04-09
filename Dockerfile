@@ -14,7 +14,7 @@ ARG BIN_NAME
 ARG BIN_VERSION
 COPY --from=builder /src/${BIN_NAME}/out/${BIN_NAME} /usr/bin/${BIN_NAME}
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-HEALTHCHECK CMD ["/usr/bin/purpleair2mqtt", "-healthcheck", "-healthcheck-url", "http://localhost:6001"]
+HEALTHCHECK CMD ["/usr/bin/purpleair2mqtt", "-healthcheck"]
 ENTRYPOINT ["/usr/bin/purpleair2mqtt"]
 CMD ["-config", "/config.toml"]
 

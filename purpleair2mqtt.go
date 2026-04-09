@@ -296,6 +296,9 @@ func main() {
 	}
 
 	var hb heartbeat.Heartbeat
+	if config.Heartbeat != (tomlConfigHeartbeat{}) && config.Heartbeat.URL == "" && config.Heartbeat.HealthPort == 0 {
+		logger.Fatal("[heartbeat] section requires at least one of url or health_port to be set")
+	}
 	if config.Heartbeat.URL != "" || config.Heartbeat.HealthPort != 0 {
 		thresholdS := config.Heartbeat.ThresholdS
 		if thresholdS == 0 {
@@ -332,7 +335,9 @@ func main() {
 		pastatus := new(purpleAirStatus)
 		// see: https://stackoverflow.com/a/31129967/57626
 		if err := getJson(config.PurpleAir.Url, pastatus, myClient); err != nil {
-			panic(err)
+			logger.Errorf("PurpleAir poll failed: %s", err)
+			time.Sleep(time.Duration(config.PurpleAir.PollRate) * time.Second)
+			continue
 		}
 		normalizePaStatus(pastatus)
 		calculateEPAAQI(pastatus)
