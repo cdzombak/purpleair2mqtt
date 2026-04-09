@@ -232,28 +232,11 @@ func main() {
 
 	configFile := flag.String("config", "", "Filename with configuration")
 	printVersion := flag.Bool("version", false, "Print version and exit")
-	healthcheck := flag.Bool("healthcheck", false, "Run a health check against the local health server and exit")
-	healthcheckURL := flag.String("healthcheck-url", "http://localhost:6001", "URL for the health check endpoint")
 	flag.Parse()
 
 	if *printVersion {
 		fmt.Println(version)
 		os.Exit(0)
-	}
-
-	if *healthcheck {
-		hcClient := &http.Client{Timeout: 5 * time.Second}
-		resp, err := hcClient.Get(*healthcheckURL)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "healthcheck failed: %s\n", err)
-			os.Exit(1)
-		}
-		defer func() { _ = resp.Body.Close() }()
-		if resp.StatusCode == http.StatusOK {
-			os.Exit(0)
-		}
-		fmt.Fprintf(os.Stderr, "healthcheck failed: HTTP %d\n", resp.StatusCode)
-		os.Exit(1)
 	}
 
 	if *configFile != "" {

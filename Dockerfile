@@ -9,12 +9,12 @@ WORKDIR /src/${BIN_NAME}
 COPY . .
 RUN CGO_ENABLED=0 go build -ldflags="-X main.version=${BIN_VERSION}" -o ./out/${BIN_NAME} .
 
-FROM scratch
+FROM alpine:latest
+RUN apk add --no-cache curl
 ARG BIN_NAME
 ARG BIN_VERSION
 COPY --from=builder /src/${BIN_NAME}/out/${BIN_NAME} /usr/bin/${BIN_NAME}
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-HEALTHCHECK CMD ["/usr/bin/purpleair2mqtt", "-healthcheck"]
+HEALTHCHECK CMD ["curl", "-sf", "http://localhost:6001/"]
 ENTRYPOINT ["/usr/bin/purpleair2mqtt"]
 CMD ["-config", "/config.toml"]
 

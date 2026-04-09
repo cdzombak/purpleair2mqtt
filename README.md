@@ -158,8 +158,6 @@ Run `make help` to see all available targets.
 
 - `-config <file>`: Path to the TOML configuration file (required)
 - `-version`: Print version and exit
-- `-healthcheck`: Run a health check against the local health server and exit
-- `-healthcheck-url <url>`: URL for the health check endpoint (default: `http://localhost:6001`)
 
 ## Running with Docker
 
@@ -193,11 +191,11 @@ services:
 
 ### Docker Health Check
 
-If you configure `health_port` in the `[heartbeat]` section of your config file, the Docker image includes a built-in `HEALTHCHECK` that queries the health server at `http://localhost:6001`. To use a different port, override the healthcheck in your Docker Compose file:
+If you configure `health_port` in the `[heartbeat]` section of your config file, the Docker image includes a built-in `HEALTHCHECK` using `curl` that queries the health server at `http://localhost:6001`. To use a different port, override the healthcheck in your Docker Compose file:
 
 ```yaml
 healthcheck:
-  test: ["/usr/bin/purpleair2mqtt", "-healthcheck", "-healthcheck-url", "http://localhost:YOUR_PORT"]
+  test: ["curl", "-sf", "http://localhost:YOUR_PORT/"]
   interval: 60s
   timeout: 5s
   retries: 3
