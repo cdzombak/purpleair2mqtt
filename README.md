@@ -191,22 +191,17 @@ services:
 
 ### Docker Health Check
 
-If you configure `health_port` in the `[heartbeat]` section of your config file, the Docker image includes a built-in `HEALTHCHECK` using `curl` that queries the health server at `http://localhost:6001`. To use a different port, override the healthcheck in your Docker Compose file:
+If you configure `health_port` in the `[heartbeat]` section of your config file, you can add a Docker health check using `curl` (which is included in the image). Add this to your Docker Compose file:
 
 ```yaml
 healthcheck:
-  test: ["curl", "-sf", "http://localhost:YOUR_PORT/"]
+  test: ["curl", "-sf", "http://localhost:6001/"]
   interval: 60s
   timeout: 5s
   retries: 3
 ```
 
-If you don't configure `health_port`, the built-in `HEALTHCHECK` will report the container as unhealthy. In that case, disable it in your Compose file:
-
-```yaml
-healthcheck:
-  disable: true
-```
+Replace `6001` with your configured `health_port` if different.
 
 ### Building the Container Locally
 

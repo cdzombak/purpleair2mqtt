@@ -6,8 +6,8 @@ services:
     network_mode: host
     volumes:
       - ./config.toml:/config.toml:ro
-    # If heartbeat health_port is configured in config.toml, Docker can
-    # use the built-in healthcheck. Override the default URL/port if needed:
+    # If heartbeat health_port is configured in config.toml, you can enable
+    # a Docker healthcheck using curl (included in the image):
     # healthcheck:
     #   test: ["curl", "-sf", "http://localhost:6001/"]
     #   interval: 60s
