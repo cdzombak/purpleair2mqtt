@@ -195,7 +195,7 @@ If you configure `health_port` in the `[heartbeat]` section of your config file,
 
 ```yaml
 healthcheck:
-  test: ["curl", "-sf", "http://localhost:6001/"]
+  test: ["CMD", "curl", "-sf", "http://localhost:6001/"]
   interval: 60s
   timeout: 5s
   retries: 3
