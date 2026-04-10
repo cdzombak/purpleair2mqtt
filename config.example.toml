@@ -41,3 +41,16 @@
 #     password = "your_password"
 #     measurement_name = "purpleair_monitor"
 #     status_measurement_name = "purpleair_status"
+
+# Heartbeat integration (optional)
+# Sends a heartbeat ping and/or serves a health check endpoint after each
+# successful poll cycle. Works well with Uptime Kuma push monitors.
+# [heartbeat]
+#     # URL to GET for heartbeat pings (e.g. Uptime Kuma push URL)
+#     url = "https://uptimekuma.example.com:9001/api/push/abcd1234?status=up&msg=OK&ping="
+#     # Heartbeat ping interval in seconds (default: poll_rate)
+#     interval_s = 120
+#     # Liveness threshold in seconds (default: poll_rate * 3)
+#     threshold_s = 360
+#     # Port for the health check HTTP server (useful as a Docker HEALTHCHECK)
+#     health_port = 6001

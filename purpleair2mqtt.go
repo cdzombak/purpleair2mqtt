@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/cdzombak/heartbeat"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/naoina/toml"
 	"github.com/withmandala/go-log"
@@ -56,11 +57,19 @@ type tomlConfigPurpleAir struct {
 	Timeout  int // Timeout in seconds for HTTP requests
 }
 
+type tomlConfigHeartbeat struct {
+	URL        string // URL to GET for heartbeat pings
+	IntervalS  int    // Heartbeat interval in seconds
+	ThresholdS int    // Liveness threshold in seconds
+	HealthPort int    // Port for the health check HTTP server
+}
+
 type tomlConfig struct {
 	PurpleAir tomlConfigPurpleAir
 	Mqtt      tomlConfigMQTT
 	Hass      tomlConfigHass
 	Influx    tomlConfigInflux
+	Heartbeat tomlConfigHeartbeat
 }
 
 type purpleAirMonitor struct {
@@ -269,6 +278,35 @@ func main() {
 		}
 	}
 
+	var hb heartbeat.Heartbeat
+	if config.Heartbeat != (tomlConfigHeartbeat{}) && config.Heartbeat.URL == "" && config.Heartbeat.HealthPort == 0 {
+		logger.Fatal("[heartbeat] section requires at least one of url or health_port to be set")
+	}
+	if config.Heartbeat.URL != "" || config.Heartbeat.HealthPort != 0 {
+		thresholdS := config.Heartbeat.ThresholdS
+		if thresholdS == 0 {
+			thresholdS = config.PurpleAir.PollRate * 3
+		}
+		intervalS := config.Heartbeat.IntervalS
+		if intervalS == 0 {
+			intervalS = config.PurpleAir.PollRate
+		}
+		var err error
+		hb, err = heartbeat.NewHeartbeat(&heartbeat.Config{
+			HeartbeatInterval: time.Duration(intervalS) * time.Second,
+			LivenessThreshold: time.Duration(thresholdS) * time.Second,
+			HeartbeatURL:      config.Heartbeat.URL,
+			Port:              config.Heartbeat.HealthPort,
+			OnError: func(err error) {
+				logger.Errorf("heartbeat error: %s", err)
+			},
+		})
+		if err != nil {
+			logger.Fatalf("failed to create heartbeat: %s", err)
+		}
+		hb.Start()
+	}
+
 	logger.Infof("HTTP Target: %s", config.PurpleAir.Url)
 	timeout := 15
 	if config.PurpleAir.Timeout > 0 {
@@ -280,7 +318,9 @@ func main() {
 		pastatus := new(purpleAirStatus)
 		// see: https://stackoverflow.com/a/31129967/57626
 		if err := getJson(config.PurpleAir.Url, pastatus, myClient); err != nil {
-			panic(err)
+			logger.Errorf("PurpleAir poll failed: %s", err)
+			time.Sleep(time.Duration(config.PurpleAir.PollRate) * time.Second)
+			continue
 		}
 		normalizePaStatus(pastatus)
 		calculateEPAAQI(pastatus)
@@ -299,15 +339,27 @@ func main() {
 		logger.Infof("US EPA AQI: %d (%s - %s)", pastatus.EPAAQI, pastatus.EPAAQICategory, pastatus.EPAAQIColor)
 		logger.Infof("US EPA PM2.5 AQI: %d, PM10 AQI: %d", pastatus.EPAPM25AQI, pastatus.EPAPM10AQI)
 
+		pollOK := true
+
 		if config.Influx != (tomlConfigInflux{}) {
-			write_influx(pastatus, &pastatus.A, &pastatus.B)
+			if err := writeInflux(pastatus, &pastatus.A, &pastatus.B); err != nil {
+				logger.Errorf("InfluxDB write failed: %s", err)
+				pollOK = false
+			}
 		}
 
 		if config.Mqtt != (tomlConfigMQTT{}) {
 			if config.Mqtt.Topic == "" {
 				config.Mqtt.Topic = pastatus.Geo
 			}
-			publishMQTT(pastatus)
+			if err := publishMQTT(pastatus); err != nil {
+				logger.Errorf("MQTT publish failed: %s", err)
+				pollOK = false
+			}
+		}
+
+		if pollOK && hb != nil {
+			hb.Alive(time.Now())
 		}
 
 		logger.Debugf("Sleeping for %d seconds", config.PurpleAir.PollRate)
@@ -505,12 +557,12 @@ func monitor_to_point(monitor *purpleAirMonitor) (*influxclient.Point, error) {
 	return influxclient.NewPoint(measurementName, tags, values, time.Now())
 }
 
-func write_influx(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB *purpleAirMonitor) {
+func writeInflux(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB *purpleAirMonitor) error {
 	c, err := influxclient.NewHTTPClient(influxclient.HTTPConfig{
 		Addr: fmt.Sprintf("http://%s:%d", config.Influx.Hostname, config.Influx.Port),
 	})
 	if err != nil {
-		logger.Errorf("Error creating InfluxDB Client: %s", err.Error())
+		return fmt.Errorf("error creating InfluxDB Client: %w", err)
 	}
 	defer func() { _ = c.Close() }()
 
@@ -519,35 +571,34 @@ func write_influx(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB 
 		Precision: "s",
 	})
 	if err != nil {
-		logger.Errorf("error creating batchpoints: %s", err)
+		return fmt.Errorf("error creating batchpoints: %w", err)
 	}
 
 	pointA, err := monitor_to_point(monitorA)
 	if err != nil {
-		logger.Errorf("error translating monitor sample to point")
+		return fmt.Errorf("error translating monitor sample to point: %w", err)
 	}
 	bp.AddPoint(pointA)
 
 	pointB, err := monitor_to_point(monitorB)
 	if err != nil {
-		logger.Errorf("error translating monitor sample to point")
+		return fmt.Errorf("error translating monitor sample to point: %w", err)
 	}
 	bp.AddPoint(pointB)
 
 	pointS, err := status_to_point(status)
 	if err != nil {
-		logger.Errorf("error translating status to point")
+		return fmt.Errorf("error translating status to point: %w", err)
 	}
 	bp.AddPoint(pointS)
 
-	err = c.Write(bp)
-
-	if err != nil {
-		logger.Fatal(err)
+	if err = c.Write(bp); err != nil {
+		return fmt.Errorf("error writing to InfluxDB: %w", err)
 	}
+	return nil
 }
 
-func publishMQTT(status *purpleAirStatus) {
+func publishMQTT(status *purpleAirStatus) error {
 	v := reflect.ValueOf(*status)
 	typeOfStatus := v.Type()
 
@@ -563,32 +614,52 @@ func publishMQTT(status *purpleAirStatus) {
 		logger.Infof("field[%s] = [%v]", fieldName, fieldValue)
 		logger.Infof("topic = %s", topic)
 		token := client.Publish(topic, 0, false, fmt.Sprintf("%v", fieldValue))
-		token.Wait()
+		if !token.WaitTimeout(10 * time.Second) {
+			return fmt.Errorf("timeout publishing to MQTT topic %s", topic)
+		}
+		if err := token.Error(); err != nil {
+			return fmt.Errorf("error publishing to MQTT topic %s: %w", topic, err)
+		}
 	}
 
 	// Also publish sensor A and B EPA AQI values
-	publishSensorEPAAQI(&status.A, "A")
-	publishSensorEPAAQI(&status.B, "B")
+	if err := publishSensorEPAAQI(&status.A, "A"); err != nil {
+		return err
+	}
+	if err := publishSensorEPAAQI(&status.B, "B"); err != nil {
+		return err
+	}
+	return nil
 }
 
-func publishSensorEPAAQI(monitor *purpleAirMonitor, sensor string) {
+func publishSensorEPAAQI(monitor *purpleAirMonitor, sensor string) error {
 	baseTopic := fmt.Sprintf("%s/%s/sensor_%s", config.Mqtt.TopicPrefix, config.Mqtt.Topic, sensor)
 
-	token := client.Publish(fmt.Sprintf("%s/epa_aqi", baseTopic), 0, false, fmt.Sprintf("%d", monitor.EPAAQI))
-	token.Wait()
+	publish := func(topic string, payload string) error {
+		token := client.Publish(topic, 0, false, payload)
+		if !token.WaitTimeout(10 * time.Second) {
+			return fmt.Errorf("timeout publishing to MQTT topic %s", topic)
+		}
+		if err := token.Error(); err != nil {
+			return fmt.Errorf("error publishing to MQTT topic %s: %w", topic, err)
+		}
+		return nil
+	}
 
-	token = client.Publish(fmt.Sprintf("%s/epa_pm25_aqi", baseTopic), 0, false, fmt.Sprintf("%d", monitor.EPAPM25AQI))
-	token.Wait()
-
-	token = client.Publish(fmt.Sprintf("%s/epa_pm10_aqi", baseTopic), 0, false, fmt.Sprintf("%d", monitor.EPAPM10AQI))
-	token.Wait()
-
-	token = client.Publish(fmt.Sprintf("%s/epa_aqi_category", baseTopic), 0, false, monitor.EPAAQICategory)
-	token.Wait()
-
-	token = client.Publish(fmt.Sprintf("%s/epa_aqi_color", baseTopic), 0, false, monitor.EPAAQIColor)
-	token.Wait()
-
-	token = client.Publish(fmt.Sprintf("%s/epa_aqi_color_rgb", baseTopic), 0, false, monitor.EPAAQIColorRGB)
-	token.Wait()
+	if err := publish(fmt.Sprintf("%s/epa_aqi", baseTopic), fmt.Sprintf("%d", monitor.EPAAQI)); err != nil {
+		return err
+	}
+	if err := publish(fmt.Sprintf("%s/epa_pm25_aqi", baseTopic), fmt.Sprintf("%d", monitor.EPAPM25AQI)); err != nil {
+		return err
+	}
+	if err := publish(fmt.Sprintf("%s/epa_pm10_aqi", baseTopic), fmt.Sprintf("%d", monitor.EPAPM10AQI)); err != nil {
+		return err
+	}
+	if err := publish(fmt.Sprintf("%s/epa_aqi_category", baseTopic), monitor.EPAAQICategory); err != nil {
+		return err
+	}
+	if err := publish(fmt.Sprintf("%s/epa_aqi_color", baseTopic), monitor.EPAAQIColor); err != nil {
+		return err
+	}
+	return publish(fmt.Sprintf("%s/epa_aqi_color_rgb", baseTopic), monitor.EPAAQIColorRGB)
 }
